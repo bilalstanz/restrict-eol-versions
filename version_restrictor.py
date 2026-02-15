@@ -46,7 +46,7 @@ def get_active_eks_versions(url: str) -> List[str]:
         urllib.error.URLError: If the API request fails.
     """
     try:
-        logger.info(f"Fetching EKS versions from {url}...")
+        logger.info(f"Fetching EKS versions")
         with urllib.request.urlopen(url, timeout=10) as response:
             if response.status != 200:
                 raise urllib.error.HTTPError(url, response.status, "HTTP Error", response.headers, None)

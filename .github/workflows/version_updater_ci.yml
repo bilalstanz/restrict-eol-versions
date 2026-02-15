@@ -1,0 +1,66 @@
+name: Update EKS Versions
+
+on:
+  schedule:
+    - cron: '0 */4 * * *' # Run every 4 hours
+  workflow_dispatch: # Allow manual trigger
+    inputs:
+      dry-run:
+        description: 'Run script without committing'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # Needed to commit changes
+  # pull-requests: write # Add if opening PRs
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update-eks-versions:
+    name: Update EKS Data
+    runs-on: ubuntu-latest
+    timeout-minutes: 5 # Prevent hung jobs from consuming minutes
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # Shallow clone for speed
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Pin version for stability
+
+      - name: Run update script
+        id: run_script
+        env:
+          PYTHONUNBUFFERED: "1" # Ensure logs are flushed immediately
+        run: |
+          python3 version_restrictor.py
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet modules/eks/variables.tf; then
+            echo "No changes detected."
+            echo "changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected in modules/eks/variables.tf"
+            echo "changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changes == 'true' && inputs.dry-run != true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add modules/eks/variables.tf
+          git commit -m "chore: update active EKS versions [skip ci]" --signoff
+          git push origin HEAD:${{ github.ref }}
