@@ -17,8 +17,8 @@ variable "cluster_version" {
   description = "Kubernetes version for the EKS cluster"
   type        = string
   validation {
-    condition     = contains([""], var.cluster_version)
-    error_message = ""
+    condition     = contains(["1.32", "1.33", "1.34", "1.35"], var.cluster_version)
+    error_message = "The cluster_version must be one of: 1.32, 1.33, 1.34, 1.35."
   }
 }
 
